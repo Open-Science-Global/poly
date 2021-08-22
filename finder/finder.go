@@ -2,6 +2,8 @@ package finder
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/Open-Science-Global/poly"
 	"github.com/Open-Science-Global/poly/transform"
@@ -68,6 +70,22 @@ func AddMatchesToSequence(matches []Match, sequence poly.Sequence) poly.Sequence
 		sequence.AddFeature(&feature)
 	}
 	return sequence
+}
+
+func AvoidHairpin(stemSize int, hairpinWindow int) func(string) []Match {
+	return func(sequence string) []Match {
+		var matches []Match
+		reverse := transform.ReverseComplement(sequence)
+		for i := 0; i < len(sequence)-stemSize && len(sequence)-(i+hairpinWindow) >= 0; i++ {
+			word := sequence[i : i+stemSize]
+			rest := reverse[len(sequence)-(i+hairpinWindow) : len(sequence)-(i+stemSize)]
+			if strings.Contains(rest, word) {
+				location := strings.Index(rest, word)
+				matches = append(matches, Match{i, i + hairpinWindow - location - 1, "Harpin found in next " + strconv.Itoa(hairpinWindow) + "bp in reverse complementary sequence: " + word})
+			}
+		}
+		return matches
+	}
 }
 
 // RemoveSequence is a generator for a problematicSequenceFuncs for specific sequences.
